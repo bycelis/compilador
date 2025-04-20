@@ -1,0 +1,304 @@
+body{
+    background: LightGray;
+    font-family: Arial, sans-serif;
+    padding: 0;
+    margin: 0;
+}
+header{
+    padding: 1%;
+    background: Gray;
+    text-align: center;
+    color: lightgray;
+    margin: 0.2%;
+    border-radius: 10px;
+}
+section{
+    margin: 0.5%;
+}
+.parent {
+    display: grid;
+    grid-template-columns: repeat(1, 1fr);
+    grid-template-rows: repeat(9, 1fr);
+    gap: 4px;
+}
+.div1 {
+    grid-row: span 3 / span 3;
+    text-align: center;
+    border: 1px solid gray;
+    border-radius: 10px;
+    background: white;
+}
+.tabla-codigo {
+    border-collapse: collapse;
+    min-width: 90%;
+    width: 90%;
+    max-width: 560px; 
+    height: 200px; 
+}
+.numero-celda {
+    width: 2%;
+    border: 1px solid #000;
+    padding: 5px;
+    text-align: center;
+    background: gray;
+    font-size: 15px;
+}
+.codigo-celda {
+    width: 68%;
+    border: 1px solid #000;
+    padding: 0;
+}
+.boton-celda {
+    width: 30%;
+    padding: 0;
+    border: none;
+}
+.compilar {
+    background: gray;
+    width: 90%;
+    height: 190px;
+    margin: 2%;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    cursor: pointer;
+    color: white;
+    border-radius: 10px;
+}
+.compilar:hover{
+    transform: scale(1.1);
+    color: black;
+    background: lightgrey;
+}
+textarea {
+    height: 200px;
+    width: 97%;
+    font-size: 15.5px;
+    line-height: 2.6;
+    resize: vertical;
+}
+.limpiar{
+    border-radius: 10px;
+    width: 40%;
+    background: gray;
+    color: white;
+    padding: 2%;
+    margin-top: 2%;
+    margin-bottom: 2%;
+    margin-right: 2%;
+    cursor: pointer;
+}
+.limpiar:hover{
+    transform: scale(1.1);
+    color: black;
+    background: lightgrey;
+}
+.generar{
+    border-radius: 10px;
+    background: gray;
+    color: white;
+    padding: 2%;
+    width: 40%;
+    margin-top: 2%;
+    margin-bottom: 2%;
+    margin-left: 2%;
+    cursor: pointer;
+}
+.generar:hover{
+    transform: scale(1.1);
+    color: black;
+    background: lightgrey;
+}
+/* Estilos para el análisis sintáctico */
+.errores {
+    background-color: #ffebee;
+    padding: 10px;
+    border-radius: 5px;
+    border: 1px solid #ffcdd2;
+}
+
+.errores h4 {
+    margin: 5px 0;
+    color: #d32f2f;
+}
+
+.errores ul {
+    margin: 5px 0;
+    padding-left: 20px;
+}
+
+.error {
+    color: #d32f2f;
+    font-weight: bold;
+}
+
+.token-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.token-table th, .token-table td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+}
+
+.token-table th {
+    background-color: #f2f2f2;
+}
+
+.token-table tr.error {
+    background-color: #ffebee;
+}
+.div2 {
+    grid-row: span 3 / span 3;
+    grid-row-start: 4;
+    text-align: center;
+    border: 1px solid gray;
+    border-radius: 10px;
+    background: white;
+}
+
+    
+.tokens {
+    width: 90%;
+    grid-column: span 2 / span 2;
+    grid-row: span 6 / span 6;
+    border: 1px solid gray;
+    border-radius: 10px;
+    margin-left: 5%;
+    margin-right: 5%;
+    padding: 1%;
+}
+#result-lexico{
+    border: 1px solid gray;
+    border-radius: 10px;
+    overflow-y: auto; 
+    width: 80%;
+    height: 110px;
+    background: lightgray;
+    padding: 2.5%;
+}
+
+.analisis {
+    width: 90%;
+    grid-column: span 2 / span 2;
+    grid-row: span 6 / span 6;
+    grid-row-start: 7;
+    border: 1px solid gray;
+    border-radius: 10px;
+    margin-left: 5%;
+    margin-right: 5%;
+    padding: 1%;
+}
+#result-sintactico{
+    border: 1px solid gray;
+    border-radius: 10px;
+    overflow-y: auto; 
+    width: 80%;
+    height: 110px;
+    background: lightgray;
+    padding: 2.5%;
+}
+.div3 {
+    grid-row: span 3 / span 3;
+    grid-row-start: 7;
+    text-align: center;
+    border: 1px solid gray;
+    border-radius: 10px;
+    background: white;
+}
+.scroll{
+    width: 80%;
+    max-height: 400px;
+    overflow-y: auto; 
+}
+.table-token {
+    border-collapse: collapse;
+    width: 300px;
+}
+th, td {
+    border: 1px solid #ddd;
+    padding: 12px;
+    text-align: center;
+}
+th {
+    background-color: #f2f2f2;
+    font-weight: bold;
+    position: sticky;
+    top: 0;
+}
+tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+tr:hover {
+    background-color: #f1f1f1;
+}
+
+.celda {
+    color: #999;
+}
+footer{
+    padding: 1%;
+    text-align: center;
+    color: lightgrey;
+    background: black;
+}
+
+@media (min-width: 1100px) {
+    body{
+        background: LightGray;
+        padding: 0;
+        margin: 0;
+    }
+    header{
+        padding: 1%;
+        background: Gray;
+        text-align: center;
+        color: lightgray;
+        margin: 0.2%;
+        border-radius: 10px;
+    }
+    .parent {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        grid-template-rows: repeat(12, 1fr);
+        gap: 4px;
+    }
+    .div1 {
+        grid-column: span 2 / span 2;
+        grid-row: span 12 / span 12;
+        grid-row-start: 1;
+        text-align: center;
+        border: 1px solid gray;
+        border-radius: 10px;
+    }
+    
+    .div2 {
+        grid-column: span 2 / span 2;
+        grid-row: span 12 / span 12;
+        grid-column-start: 3;
+        grid-row-start: 1;
+        text-align: center;
+        border: 1px solid gray;
+        border-radius: 10px;
+    }
+    
+    .div3 {
+        grid-column: span 2 / span 2;
+        grid-row: span 12 / span 12;
+        grid-column-start: 5;
+        grid-row-start: 1;
+        text-align: center;
+        border: 1px solid gray;
+        border-radius: 10px;
+        height: 500px;
+    }
+    footer{
+        padding: 1%;
+        text-align: center;
+        color: lightgray;
+        background: black;
+    }
+  }
