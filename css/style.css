@@ -12,22 +12,25 @@ header{
     margin: 0.2%;
     border-radius: 10px;
 }
-section{
-    margin: 0.5%;
-}
+
 .parent {
     display: grid;
-    grid-template-columns: repeat(1, 1fr);
-    grid-template-rows: repeat(9, 1fr);
+    grid-template-columns: repeat(12, 1fr);
+    grid-template-rows: repeat(10, 1fr);
     gap: 4px;
+    margin: 0.2%;
 }
-.div1 {
-    grid-row: span 3 / span 3;
+    
+.codigo {
+    grid-column: span 9 / span 9;
+    grid-row: span 5 / span 5;
     text-align: center;
     border: 1px solid gray;
     border-radius: 10px;
     background: white;
+    font-size: 16px;
 }
+
 .tabla-codigo {
     border-collapse: collapse;
     min-width: 90%;
@@ -72,7 +75,7 @@ section{
 }
 textarea {
     height: 200px;
-    width: 97%;
+    width: 99%;
     font-size: 12px;
     line-height: 3.4;
     resize: vertical;
@@ -82,9 +85,9 @@ textarea {
     width: 40%;
     background: gray;
     color: white;
-    padding: 2%;
+    padding: 1%;
     margin-top: 2%;
-    margin-bottom: 2%;
+    margin-bottom: 10px;
     margin-right: 2%;
     cursor: pointer;
 }
@@ -97,10 +100,10 @@ textarea {
     border-radius: 10px;
     background: gray;
     color: white;
-    padding: 2%;
+    padding: 1%;
     width: 40%;
     margin-top: 2%;
-    margin-bottom: 2%;
+    margin-bottom: 10px;
     margin-left: 2%;
     cursor: pointer;
 }
@@ -108,28 +111,6 @@ textarea {
     transform: scale(1.1);
     color: black;
     background: lightgrey;
-}
-/* Estilos para el análisis sintáctico */
-.errores {
-    background-color: #ffebee;
-    padding: 10px;
-    border-radius: 5px;
-    border: 1px solid #ffcdd2;
-}
-
-.errores h4 {
-    margin: 5px 0;
-    color: #d32f2f;
-}
-
-.errores ul {
-    margin: 5px 0;
-    padding-left: 20px;
-}
-
-.error {
-    color: #d32f2f;
-    font-weight: bold;
 }
 
 .token-table {
@@ -150,70 +131,24 @@ textarea {
 .token-table tr.error {
     background-color: #ffebee;
 }
-.div2 {
-    grid-row: span 3 / span 3;
-    grid-row-start: 4;
-    text-align: center;
-    border: 1px solid gray;
-    border-radius: 10px;
-    background: white;
-}
 
-    
 .tokens {
-    width: 90%;
-    grid-column: span 2 / span 2;
-    grid-row: span 6 / span 6;
-    border: 1px solid gray;
-    border-radius: 10px;
-    margin-left: 5%;
-    margin-right: 5%;
-    padding: 1%;
-}
-#result-lexico{
-    border: 1px solid gray;
-    border-radius: 10px;
-    overflow-y: auto; 
-    width: 80%;
-    height: 110px;
-    background: lightgray;
-    padding: 2.5%;
-}
-
-.analisis {
-    width: 90%;
-    grid-column: span 2 / span 2;
-    grid-row: span 6 / span 6;
-    grid-row-start: 7;
-    border: 1px solid gray;
-    border-radius: 10px;
-    margin-left: 5%;
-    margin-right: 5%;
-    padding: 1%;
-}
-#result-sintactico{
-    border: 1px solid gray;
-    border-radius: 10px;
-    overflow-y: auto; 
-    width: 80%;
-    height: 110px;
-    background: lightgray;
-    padding: 2.5%;
-}
-.div3 {
-    grid-row: span 3 / span 3;
-    grid-row-start: 7;
+    grid-column: span 4 / span 4;
+    grid-row: span 10 / span 10;
+    grid-column-start: 10;
     text-align: center;
     border: 1px solid gray;
     border-radius: 10px;
     background: white;
-    font-size: 16px;
+    font-size: 12px;
 }
+
 .scroll{
     width: 95%;
-    max-height: 380px;
+    max-height: 620px;
     overflow-y: auto; 
 }
+
 #table-token {
     border-collapse: collapse;
     width: 300px;
@@ -240,64 +175,132 @@ tr:hover {
 .celda {
     color: #999;
 }
+
+.resultados {
+    grid-column: span 9 / span 9;
+    grid-row: span 5 / span 5;
+    grid-row-start: 6;
+    text-align: center;
+    border: 1px solid gray;
+    border-radius: 10px;
+    background: white;
+    font-size: 16px;
+}
+        
+.parent-resultado {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    gap: 4px;
+    margin: 0.2%;
+}
+    
+.lexico {
+    grid-column: span 4 / span 4;
+    grid-row: span 3 / span 3;
+    text-align: center;
+    border: 1px solid gray;
+    border-radius: 10px;
+    background: white;
+}
+
+#result-lexico{
+    border: 1px solid gray;
+    border-radius: 10px;
+    overflow-y: auto; 
+    width: 90%;
+    height: 170px;
+    background: lightgray;
+    padding: 2.5%;
+    font-size: 12px;
+}
+
+.semantico {
+    grid-column: span 4 / span 4;
+    grid-row: span 3 / span 3;
+    grid-column-start: 5;
+    text-align: center;
+    border: 1px solid gray;
+    border-radius: 10px;
+    background: white;
+}
+
+#result-semantico{
+    border: 1px solid gray;
+    border-radius: 10px;
+    overflow-y: auto; 
+    width: 90%;
+    height: 170px;
+    background: lightgray;
+    padding: 2.5%;
+}
+
+.sintactico {
+    grid-column: span 4 / span 4;
+    grid-row: span 3 / span 3;
+    grid-column-start: 9;
+    text-align: center;
+    border: 1px solid gray;
+    border-radius: 10px;
+    background: white;
+}
+#result-sintactico{
+    border: 1px solid gray;
+    border-radius: 10px;
+    overflow-y: auto; 
+    width: 90%;
+    height: 170px;
+    background: lightgray;
+    padding: 2.5%;
+}
+
 footer{
     padding: 1%;
     text-align: center;
     color: lightgrey;
     background: black;
 }
-
-@media (min-width: 1100px) {
-    body{
-        background: LightGray;
-        padding: 0;
-        margin: 0;
-    }
-    header{
-        padding: 1%;
-        background: Gray;
-        text-align: center;
-        color: lightgray;
-        margin: 0.2%;
-        border-radius: 10px;
-    }
+@media (max-width: 900px) {
     .parent {
         display: grid;
-        grid-template-columns: repeat(6, 1fr);
-        grid-template-rows: repeat(12, 1fr);
+        grid-template-columns: repeat(12, 1fr);
+        grid-template-rows: repeat(10, 1fr);
         gap: 4px;
+        margin: 0.2%;
+        padding: 0.2%;
     }
-    .div1 {
-        grid-column: span 3 / span 3;
-        grid-row: span 12 / span 12;
-        grid-row-start: 1;
+        
+    .codigo {
+        grid-column: span 12 / span 12;
+        grid-row: span 4 / span 4;
         text-align: center;
         border: 1px solid gray;
         border-radius: 10px;
+        background: white;
+        font-size: 16px;
     }
-    
-    .div2 {
-        grid-column: span 2 / span 2;
-        grid-row: span 12 / span 12;
-        grid-column-start: 4;
+    .tokens {
+        grid-column: span 12 / span 12;
+        grid-row: span 3 / span 3;
+        grid-column-start: 1;
+        grid-row-start: 8;
         text-align: center;
         border: 1px solid gray;
         border-radius: 10px;
+        background: white;
+        font-size: 16px;
+        
     }
-    
-    .div3 {
-        grid-row: span 12 / span 12;
-        grid-column-start: 6;
+    .resultados {
+        grid-column: span 12 / span 12;
+        grid-row: span 3 / span 3;
+        grid-column-start: 1;
+        grid-row-start: 5;
         text-align: center;
         border: 1px solid gray;
         border-radius: 10px;
-        height: 500px;
-        font-size: 16px; 
+        background: white;
+        font-size: 16px;
     }
-    footer{
-        padding: 1%;
-        text-align: center;
-        color: lightgray;
-        background: black;
-    }
-  }
+
+}
