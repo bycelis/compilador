@@ -1,19 +1,20 @@
 <!DOCTYPE html>
+
 <html lang="es">
     <head>
-        <title></title>
+        <title>compilador</title>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <link href="css/style.css" rel="stylesheet">
-        <title>Compilador</title>
     </head>
     <body>
     <header>
         <h1>Compilador</h1>
     </header>
+    
     <section class="parent">
-        <div class="div1">
-            <h2>Código</h2>
+        <div class="codigo">
+            <h2>codigo</h2>
             <center>
                     <table class="tabla-codigo">
                         <tbody>
@@ -44,39 +45,49 @@
                     </table>
                     <button type="reset" class="limpiar" id="limpiar">limpiar</button>
                     <button class="generar" id="generar">generar</button>
-
             </center>
         </div>
-        <div class="div2">
+        <div class="tokens">
+            <h2>tokens</h2>
             <center>
-                <h2>Resultados</h2>
-                <div class="resultados">
-                    <div class="tokens">
-                        <h3>Análisis Léxico</h3>
-                        <div id="result-lexico"></div>
-                    </div>
-                    <br>
-                    <div class="analisis">
-                        <h3>Analisis Sintáctico</h3>
-                        <div id="result-sintactico"></div>
-                    </div>
+                <div class="scroll">
+                    <center>
+                        <div id="tabla-token"></div>
+                    </center>
                 </div>
             </center>
         </div>
-        <div class="div3">
-            <h2>Tokens</h2>
-                <center>
-                    <div class="scroll">
-                        <center>
-                            <div id="tabla-token"></div>
-                        </center>
-                    </div>
-                </center>
+        <div class="resultados">
+            <h2>resultados</h2>
+            
+            <div class="parent-resultado">
+                <div class="lexico">
+                    <h3>Análisis Léxico</h3>
+                    <center>
+                        <div id="result-lexico"></div>
+                        <br>
+                    </center>
+                </div>
+                <div class="semantico">
+                    <h3>Analisis Semántico</h3>
+                    <center>
+                        <div id="result-semantico"></div>
+                        <br>
+                    </center>
+                </div>
+                <div class="sintactico">
+                    <h3>Analisis Sintáctico</h3>
+                    <center>
+                        <div id="result-sintactico"></div>
+                        <br>
+                    </center>
+                </div>
+            </div>
         </div>
     </section>
     <script src="js/JavaScript.js"></script>
     <footer>
-        <p>DESARROLLADO POR: <br> ALEJANDRO JULIÁN MARÍN PINZÓN <br> BRANDON YESID CELIS OREJARENA</p>
+        <p>Desarrollado por: <br> Alejandro Julián Marín Pinzón <br> Brandon Yesid Celis Orejarena</p>
     </footer>
     </body>
 </html>
