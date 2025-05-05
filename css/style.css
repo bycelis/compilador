@@ -75,7 +75,7 @@ header{
 }
 textarea {
     height: 200px;
-    width: 99%;
+    width: 98%;
     font-size: 12px;
     line-height: 3.4;
     resize: vertical;
@@ -218,7 +218,7 @@ tr:hover {
 .semantico {
     grid-column: span 4 / span 4;
     grid-row: span 3 / span 3;
-    grid-column-start: 5;
+    grid-column-start: 9;
     text-align: center;
     border: 1px solid gray;
     border-radius: 10px;
@@ -238,7 +238,7 @@ tr:hover {
 .sintactico {
     grid-column: span 4 / span 4;
     grid-row: span 3 / span 3;
-    grid-column-start: 9;
+    grid-column-start: 5;
     text-align: center;
     border: 1px solid gray;
     border-radius: 10px;
@@ -322,7 +322,7 @@ footer{
     .semantico {
         grid-column: span 12 / span 12;
         grid-row: span 3 / span 3;
-        grid-row-start: 4;
+        grid-row-start: 7;
         text-align: center;
         border: 1px solid gray;
         border-radius: 10px;
@@ -332,7 +332,7 @@ footer{
     .sintactico {
         grid-column: span 12 / span 12;
         grid-row: span 3 / span 3;
-        grid-row-start: 7;
+        grid-row-start: 4;
         text-align: center;
         border: 1px solid gray;
         border-radius: 10px;

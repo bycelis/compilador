@@ -67,7 +67,8 @@ const lexicoJS = {
         "++": "INCREMENTO",
         "--": "DECREMENTO",
         "?.": "ENCADENAMIENTO_OPCIONAL",
-        "??": "FUSION_NULA"
+        "??": "FUSION_NULA",
+        "**": "EXPONENTE"
     },
 
     delimitadores: {
@@ -81,14 +82,46 @@ const lexicoJS = {
         ",": "COMA",
         ":": "DOS_PUNTOS",
         ".": "PUNTO",
-        "=>": "FLECHA_FUNCION"
+        "=>": "FLECHA_FUNCION",
+        "...": "OPERADOR_SPREAD"
     },
 
     literales: {
-        number: "NUMERO",
-        string: "CADENA_TEXTO",
-        regex: "EXPRESION_REGULAR",
-        template: "PLANTILLA_CADENA"
+        number: {
+            tipo: "NUMERO",
+            patron: /^-?\d+(\.\d+)?([eE][+-]?\d+)?/
+        },
+        string: {
+            tipo: "CADENA_TEXTO",
+            comillas: {
+                '"': "COMILLAS_DOBLES",
+                "'": "COMILLAS_SENCILLAS",
+                "`": "COMILLAS_PLANTILLA"
+            },
+            escape: {
+                "\\": "BARRA_INVERTIDA",
+                patron: /\\(?:['"\\bfnrtv]|u[0-9a-fA-F]{4}|x[0-9a-fA-F]{2}|u\{[0-9a-fA-F]+\})/
+            }
+        },
+        regex: {
+            tipo: "EXPRESION_REGULAR",
+            patron: /^\/(?:[^\/\\]|\\.)*\/[gimuy]*/
+        },
+        boolean: {
+            tipo: "VALOR_BOOLEANO",
+            valores: {
+                "true": "VERDADERO",
+                "false": "FALSO"
+            }
+        },
+        null: {
+            tipo: "VALOR_NULO",
+            valor: "null"
+        },
+        template: {
+            tipo: "PLANTILLA_CADENA",
+            patron: /^`(?:\\`|\\\${|[^`]|\$(?!\{))*`/
+        }
     },
 
     identificadores: {
@@ -97,226 +130,108 @@ const lexicoJS = {
     },
 
     comentarios: {
-        "//": "COMENTARIO_LINEA",
-        "/*": "COMENTARIO_BLOQUE_INICIO",
-        "*/": "COMENTARIO_BLOQUE_FIN"
-    }
+        linea: {
+            tipo: "COMENTARIO_LINEA",
+            patron: /^\/\/.*/
+        },
+        bloque: {
+            tipo: "COMENTARIO_BLOQUE",
+            inicio: "/*",
+            fin: "*/",
+            patron: /^\/\*[\s\S]*?\*\//
+        }
+    },
+
 };
 
-function analizarCodigo(codigo) {
-    const tokens = [];
-    let posicion = 0;
-    let lineaActual = 1;
-
-    while (posicion < codigo.length) {
-        let caracter = codigo[posicion];
-        
-        if (caracter === '\n') {
-            lineaActual++;
-            posicion++;
-            continue;
-        }
-
-        if (/\s/.test(caracter)) {
-            posicion++;
-            continue;
-        }
-
-        if (codigo.startsWith("//", posicion)) {
-            const finLinea = codigo.indexOf("\n", posicion);
-            const comentario = codigo.substring(posicion, finLinea === -1 ? codigo.length : finLinea);
-            tokens.push({
-                tipo: lexicoJS.comentarios["//"],
-                valor: comentario,
-                linea: lineaActual
-            });
-            posicion = finLinea === -1 ? codigo.length : finLinea;
-            continue;
-        }
-
-        if (codigo.startsWith("/*", posicion)) {
-            const finBloque = codigo.indexOf("*/", posicion);
-            if (finBloque === -1) {
-                tokens.push({
-                    tipo: "ERROR",
-                    valor: "Comentario de bloque no cerrado",
-                    linea: lineaActual
-                });
-                break;
-            }
-            const comentario = codigo.substring(posicion, finBloque + 2);
-            tokens.push({
-                tipo: lexicoJS.comentarios["/*"],
-                valor: comentario,
-                linea: lineaActual
-            });
-            posicion = finBloque + 2;
-            continue;
-        }
-
-        if (caracter === '"' || caracter === "'" || caracter === "`") {
-            const inicio = posicion;
-            posicion++;
-            let escape = false;
-            while (posicion < codigo.length) {
-                if (escape) {
-                    escape = false;
-                    posicion++;
-                    continue;
-                }
-                if (codigo[posicion] === "\\") {
-                    escape = true;
-                    posicion++;
-                    continue;
-                }
-                if (codigo[posicion] === caracter) {
-                    break;
-                }
-                if (codigo[posicion] === '\n') {
-                    lineaActual++;
-                }
-                posicion++;
-            }
-            if (posicion >= codigo.length) {
-                tokens.push({
-                    tipo: "ERROR",
-                    valor: "Cadena no cerrada",
-                    linea: lineaActual
-                });
-                break;
-            }
-            const valor = codigo.substring(inicio, posicion + 1);
-            tokens.push({
-                tipo: caracter === "`" ? lexicoJS.literales.template : lexicoJS.literales.string,
-                valor: valor,
-                linea: lineaActual
-            });
-            posicion++;
-            continue;
-        }
-
-        if (/[0-9]/.test(caracter)) {
-            let valor = caracter;
-            posicion++;
-            let tienePunto = false;
-            while (posicion < codigo.length) {
-                const siguiente = codigo[posicion];
-                if (/[0-9]/.test(siguiente)) {
-                    valor += siguiente;
-                    posicion++;
-                } else if (siguiente === "." && !tienePunto) {
-                    valor += siguiente;
-                    posicion++;
-                    tienePunto = true;
-                } else {
-                    break;
-                }
-            }
-            tokens.push({
-                tipo: lexicoJS.literales.number,
-                valor: valor,
-                linea: lineaActual
-            });
-            continue;
-        }
-
-        let palabraEncontrada = false;
-        for (const palabra in lexicoJS.palabrasReservadas) {
-            if (codigo.startsWith(palabra, posicion) && 
-                !/[a-zA-Z0-9_]/.test(codigo[posicion + palabra.length])) {
-                tokens.push({
-                    tipo: lexicoJS.palabrasReservadas[palabra],
-                    valor: palabra,
-                    linea: lineaActual
-                });
-                posicion += palabra.length;
-                palabraEncontrada = true;
-                break;
-            }
-        }
-        if (palabraEncontrada) continue;
-
-        let operadorEncontrado = false;
-        const operadoresOrdenados = Object.keys(lexicoJS.operadores).sort((a, b) => b.length - a.length);
-        for (const operador of operadoresOrdenados) {
-            if (codigo.startsWith(operador, posicion)) {
-                tokens.push({
-                    tipo: lexicoJS.operadores[operador],
-                    valor: operador,
-                    linea: lineaActual
-                });
-                posicion += operador.length;
-                operadorEncontrado = true;
-                break;
-            }
-        }
-        if (operadorEncontrado) continue;
-
-        let delimitadorEncontrado = false;
-        const delimitadoresOrdenados = Object.keys(lexicoJS.delimitadores).sort((a, b) => b.length - a.length);
-        for (const delimitador of delimitadoresOrdenados) {
-            if (codigo.startsWith(delimitador, posicion)) {
-                tokens.push({
-                    tipo: lexicoJS.delimitadores[delimitador],
-                    valor: delimitador,
-                    linea: lineaActual
-                });
-                posicion += delimitador.length;
-                delimitadorEncontrado = true;
-                break;
-            }
-        }
-        if (delimitadorEncontrado) continue;
-
-        const matchIdentificador = codigo.substring(posicion).match(lexicoJS.identificadores.patron);
-        if (matchIdentificador) {
-            tokens.push({
-                tipo: lexicoJS.identificadores.tipo,
-                valor: matchIdentificador[0],
-                linea: lineaActual
-            });
-            posicion += matchIdentificador[0].length;
-            continue;
-        }
-
-        tokens.push({
-            tipo: "ERROR",
-            valor: `Carácter inesperado: ${caracter}`,
-            linea: lineaActual
-        });
-        posicion++;
+function tabla(datos) {
+    let tablaHTML = '<table class="token"><tr><th>Código</th><th>Token</th></tr>';
+    
+    // Palabras reservadas
+    tablaHTML += '<tr><th colspan="2" class="section-header">Palabras Reservadas</th></tr>';
+    for (const [clave, valor] of Object.entries(datos.palabrasReservadas)) {
+        tablaHTML += `<tr><td>${escapeHtml(clave)}</td><td>${escapeHtml(valor)}</td></tr>`;
     }
-
-    return tokens;
+    
+    // Operadores
+    tablaHTML += '<tr><th colspan="2" class="section-header">Operadores</th></tr>';
+    for (const [clave, valor] of Object.entries(datos.operadores)) {
+        tablaHTML += `<tr><td>${escapeHtml(clave)}</td><td>${escapeHtml(valor)}</td></tr>`;
+    }
+    
+    // Delimitadores
+    tablaHTML += '<tr><th colspan="2" class="section-header">Delimitadores</th></tr>';
+    for (const [clave, valor] of Object.entries(datos.delimitadores)) {
+        tablaHTML += `<tr><td>${escapeHtml(clave)}</td><td>${escapeHtml(valor)}</td></tr>`;
+    }
+    
+    // Literales - Necesitamos un manejo especial para objetos anidados
+    tablaHTML += '<tr><th colspan="2" class="section-header">Literales</th></tr>';
+    for (const [tipo, info] of Object.entries(datos.literales)) {
+        tablaHTML += `<tr><td colspan="2" class="subtype-header">${escapeHtml(tipo)}</td></tr>`;
+        
+        if (tipo === 'number') {
+            tablaHTML += `<tr><td>tipo</td><td>${escapeHtml(info.tipo)}</td></tr>`;
+            tablaHTML += `<tr><td>patrón</td><td>${escapeHtml(info.patron.toString())}</td></tr>`;
+        }
+        else if (tipo === 'string') {
+            tablaHTML += `<tr><td>tipo</td><td>${escapeHtml(info.tipo)}</td></tr>`;
+            tablaHTML += `<tr><td colspan="2" class="sub-subtype-header">Comillas</td></tr>`;
+            for (const [comilla, desc] of Object.entries(info.comillas)) {
+                tablaHTML += `<tr><td>${escapeHtml(comilla)}</td><td>${escapeHtml(desc)}</td></tr>`;
+            }
+            tablaHTML += `<tr><td colspan="2" class="sub-subtype-header">Secuencias de escape</td></tr>`;
+            for (const [esc, desc] of Object.entries(info.escape)) {
+                if (esc !== 'patron') {
+                    tablaHTML += `<tr><td>${escapeHtml(esc)}</td><td>${escapeHtml(desc)}</td></tr>`;
+                }
+            }
+            tablaHTML += `<tr><td>patrón</td><td>${escapeHtml(info.escape.patron.toString())}</td></tr>`;
+        }
+        else if (tipo === 'regex') {
+            tablaHTML += `<tr><td>tipo</td><td>${escapeHtml(info.tipo)}</td></tr>`;
+            tablaHTML += `<tr><td>patrón</td><td>${escapeHtml(info.patron.toString())}</td></tr>`;
+        }
+        else if (tipo === 'boolean') {
+            tablaHTML += `<tr><td>tipo</td><td>${escapeHtml(info.tipo)}</td></tr>`;
+            tablaHTML += `<tr><td colspan="2" class="sub-subtype-header">Valores</td></tr>`;
+            for (const [val, desc] of Object.entries(info.valores)) {
+                tablaHTML += `<tr><td>${escapeHtml(val)}</td><td>${escapeHtml(desc)}</td></tr>`;
+            }
+        }
+        else if (tipo === 'null') {
+            tablaHTML += `<tr><td>tipo</td><td>${escapeHtml(info.tipo)}</td></tr>`;
+            tablaHTML += `<tr><td>valor</td><td>${escapeHtml(info.valor)}</td></tr>`;
+        }
+        else if (tipo === 'template') {
+            tablaHTML += `<tr><td>tipo</td><td>${escapeHtml(info.tipo)}</td></tr>`;
+            tablaHTML += `<tr><td>patrón</td><td>${escapeHtml(info.patron.toString())}</td></tr>`;
+        }
+    }
+    
+    // Identificadores
+    tablaHTML += '<tr><th colspan="2" class="section-header">Identificadores</th></tr>';
+    tablaHTML += `<tr><td>patrón</td><td>${escapeHtml(datos.identificadores.patron.toString())}</td></tr>`;
+    tablaHTML += `<tr><td>tipo</td><td>${escapeHtml(datos.identificadores.tipo)}</td></tr>`;
+    
+    // Comentarios
+    tablaHTML += '<tr><th colspan="2" class="section-header">Comentarios</th></tr>';
+    for (const [tipo, info] of Object.entries(datos.comentarios)) {
+        tablaHTML += `<tr><td colspan="2" class="subtype-header">${escapeHtml(tipo)}</td></tr>`;
+        tablaHTML += `<tr><td>tipo</td><td>${escapeHtml(info.tipo)}</td></tr>`;
+        if (info.patron) {
+            tablaHTML += `<tr><td>patrón</td><td>${escapeHtml(info.patron.toString())}</td></tr>`;
+        }
+        if (info.inicio) {
+            tablaHTML += `<tr><td>inicio</td><td>${escapeHtml(info.inicio)}</td></tr>`;
+            tablaHTML += `<tr><td>fin</td><td>${escapeHtml(info.fin)}</td></tr>`;
+        }
+    }
+    tablaHTML += '</table>';
+    return tablaHTML;
 }
 
-function mostrarResultados(tokens) {
-    const divResultado = document.getElementById("result-lexico");
-    
-    if (!tokens || tokens.length === 0) {
-        divResultado.innerHTML = "No se encontraron tokens válidos.";
-        return;
-    }
-
-    let html = "<table class='token-table'><tr><th>Tipo</th><th>Valor</th><th>Línea</th></tr>";
-    
-    tokens.forEach(token => {
-        const tipo = token.tipo || "DESCONOCIDO";
-        const valor = token.valor || "";
-        const linea = token.linea || 1;
-        const clase = tipo === "ERROR" ? "class='error'" : "";
-        
-        html += `<tr ${clase}>
-            <td>${escapeHtml(tipo)}</td>
-            <td>${escapeHtml(valor)}</td>
-            <td>${linea}</td>
-        </tr>`;
-    });
-    
-    html += "</table>";
-    divResultado.innerHTML = html;
-}
-
+// Función auxiliar para escapar HTML (debe estar definida)
 function escapeHtml(unsafe) {
     return unsafe
         .toString()
@@ -326,167 +241,296 @@ function escapeHtml(unsafe) {
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
 }
-
-function generarEjemplo() {
-    const ejemplos = [
-        'let x = 10 + 5; // Asignación simple',
-        'const saludo = "Hola mundo"; // Cadena básica',
-        'const suma = 5 + 3; // Operación matemática',
-        'const usuario = {nombre: "Juan", edad: 30}; // Objeto simple',
-        'const lista = [1, 2, 3]; // Array básico',
-        'console.log("Mensaje directo"); // Llamada a función',
-        'const doble = n => n * 2; // Función flecha simple'
-    ];
-    
-    const codigo = document.getElementById("codigo");
-    codigo.value = ejemplos[Math.floor(Math.random() * ejemplos.length)];
-}
-
-function analizarSintaxis(tokens) {
-    const resultado = document.getElementById("result-sintactico");
-    resultado.innerHTML = "";
-    
-    try {
-        let balanceParentesis = 0;
-        let balanceLlaves = 0;
-        let balanceCorchetes = 0;
-        let errores = [];
-        let tokensPorLinea = {};
-
-        tokens.forEach(token => {
-            if (!tokensPorLinea[token.linea]) {
-                tokensPorLinea[token.linea] = [];
-            }
-            tokensPorLinea[token.linea].push(token);
-        });
-
-        Object.keys(tokensPorLinea).forEach(linea => {
-            const tokensLinea = tokensPorLinea[linea];
-            const ultimoToken = tokensLinea[tokensLinea.length - 1];
-            
-            const necesitaPuntoComa = tokensLinea.some(token => {
-                return [
-                    "DECLARACION_VAR", 
-                    "DECLARACION_LET", 
-                    "DECLARACION_CONST",
-                    "RETORNO_FUNCION",
-                    "ASIGNACION",
-                    "LLAMADA_FUNCION"
-                ].includes(token.tipo);
-            });
-
-            if (necesitaPuntoComa && ultimoToken.tipo !== "PUNTO_Y_COMA" && 
-                ultimoToken.tipo !== "LLAVE_CIERRA" && ultimoToken.tipo !== "COMENTARIO_LINEA") {
-                errores.push(`Error: Falta punto y coma (;) al final de la línea ${linea}`);
-            }
-
-            tokensLinea.forEach(token => {
-                if (token.tipo === "PARENTESIS_ABRE") balanceParentesis++;
-                if (token.tipo === "PARENTESIS_CIERRA") balanceParentesis--;
-                if (token.tipo === "LLAVE_ABRE") balanceLlaves++;
-                if (token.tipo === "LLAVE_CIERRA") balanceLlaves--;
-                if (token.tipo === "CORCHETE_ABRE") balanceCorchetes++;
-                if (token.tipo === "CORCHETE_CIERRA") balanceCorchetes--;
-
-                if (balanceParentesis < 0) {
-                    errores.push(`Error: Paréntesis de cierre sin apertura en línea ${token.linea}`);
-                    balanceParentesis = 0;
-                }
-                if (balanceLlaves < 0) {
-                    errores.push(`Error: Llave de cierre sin apertura en línea ${token.linea}`);
-                    balanceLlaves = 0;
-                }
-                if (balanceCorchetes < 0) {
-                    errores.push(`Error: Corchete de cierre sin apertura en línea ${token.linea}`);
-                    balanceCorchetes = 0;
-                }
-            });
-        });
-
-        if (balanceParentesis > 0) {
-            errores.push(`Error: Faltan ${balanceParentesis} paréntesis de cierre`);
-        }
-        if (balanceLlaves > 0) {
-            errores.push(`Error: Faltan ${balanceLlaves} llaves de cierre`);
-        }
-        if (balanceCorchetes > 0) {
-            errores.push(`Error: Faltan ${balanceCorchetes} corchetes de cierre`);
-        }
-
-        let ifCount = tokens.filter(t => t.tipo === "CONDICIONAL_IF").length;
-        let elseCount = tokens.filter(t => t.tipo === "CONDICIONAL_ELSE").length;
-        
-        if (elseCount > ifCount) {
-            errores.push("Error: 'else' sin 'if' correspondiente");
-        }
-
-        if (errores.length === 0) {
-            resultado.innerHTML = "<p>Análisis sintáctico correcto. No se encontraron errores.</p>";
-        } else {
-            let html = "<div class='errores'>";
-            html += "<h4>Errores encontrados:</h4><ul>";
-            errores.forEach(error => {
-                html += `<li>${error}</li>`;
-            });
-            html += "</ul><h4>Sugerencias:</h4>";
-            html += "<ul><li>Verifica que todas las declaraciones y expresiones terminen con punto y coma</li>";
-            html += "<li>Revisa el balance de paréntesis, llaves y corchetes</li>";
-            html += "<li>Asegúrate que cada 'else' tenga un 'if' correspondiente</li></ul>";
-            html += "</div>";
-            resultado.innerHTML = html;
-        }
-    } catch (error) {
-        resultado.innerHTML = `<p class='error'>Error en el análisis sintáctico: ${error.message}</p>`;
-    }
-}
-
-function tabla(datos) {
-    let tabla = '<table class="token"><tr><th>Código</th><th>Token</th></tr>';
-    
-    for (const [clave, valor] of Object.entries(datos.palabrasReservadas)) {
-        tabla += `<tr><td>${escapeHtml(clave)}</td><td>${escapeHtml(valor)}</td></tr>`;
-    }
-    
-    for (const [clave, valor] of Object.entries(datos.operadores)) {
-        tabla += `<tr><td>${escapeHtml(clave)}</td><td>${escapeHtml(valor)}</td></tr>`;
-    }
-    
-    for (const [clave, valor] of Object.entries(datos.delimitadores)) {
-        tabla += `<tr><td>${escapeHtml(clave)}</td><td>${escapeHtml(valor)}</td></tr>`;
-    }
-    
-    for (const [clave, valor] of Object.entries(datos.literales)) {
-        tabla += `<tr><td>${escapeHtml(clave)}</td><td>${escapeHtml(valor)}</td></tr>`;
-    }
-    
-    tabla += `<tr><td>${escapeHtml("patrón")}</td><td>${escapeHtml(datos.identificadores.patron.toString())}</td></tr>`;
-    tabla += `<tr><td>${escapeHtml("tipo")}</td><td>${escapeHtml(datos.identificadores.tipo)}</td></tr>`;
-    
-    for (const [clave, valor] of Object.entries(datos.comentarios)) {
-        tabla += `<tr><td>${escapeHtml(clave)}</td><td>${escapeHtml(valor)}</td></tr>`;
-    }
-    
-    tabla += '</table>';
-    return tabla;
-}
+document.getElementById('tabla-token').innerHTML = tabla(lexicoJS);
 
 document.addEventListener('DOMContentLoaded', function() {
-    document.getElementById('tabla-token').innerHTML = tabla(lexicoJS);
-    
-    document.getElementById('compilar').addEventListener('click', function() {
-        const codigo = document.getElementById("codigo").value;
-        const tokens = analizarCodigo(codigo);
-        mostrarResultados(tokens);
-        analizarSintaxis(tokens);
+    const codigoTextarea = document.getElementById('codigo');
+    const compilarBtn = document.getElementById('compilar');
+    const limpiarBtn = document.getElementById('limpiar');
+    const generarBtn = document.getElementById('generar');
+    const tablaTokenDiv = document.getElementById('tabla-token');
+    const resultLexicoDiv = document.getElementById('result-lexico');
+    const resultSintacticoDiv = document.getElementById('result-sintactico');
+    const resultSemanticoDiv = document.getElementById('result-semantico');
+
+    function limpiarResultados() {
+        tablaTokenDiv.innerHTML = '';
+        resultLexicoDiv.innerHTML = '';
+        resultSintacticoDiv.innerHTML = '';
+        resultSemanticoDiv.innerHTML = '';
+        document.getElementById('tabla-token').innerHTML = tabla(lexicoJS);
+    }
+
+    limpiarBtn.addEventListener('click', limpiarResultados);
+
+    compilarBtn.addEventListener('click', function() {
+        const codigo = codigoTextarea.value;
+        if (!codigo.trim()) {
+            alert('Por favor ingresa código JavaScript para compilar');
+            return;
+        }
+
+        const tokens = analizarLexico(codigo);
+        mostrarTokens(tokens);
+        analizarSintactico(tokens);
+        analizarSemantico(tokens);
+        document.getElementById('tabla-token').innerHTML = tabla(lexicoJS);
     });
-    
-    document.getElementById('limpiar').addEventListener('click', function() {
-        document.getElementById("codigo").value = "";
-        document.getElementById("result-lexico").innerHTML = "";
-        document.getElementById("result-sintactico").innerHTML = "";
+
+    generarBtn.addEventListener('click', function() {
+        const ejemplos = [
+            'let mensaje = "Hola mundo";',
+            'const nombre = \'Juan\';',
+            'const html = `<div class="container">Contenido</div>`;',
+            'const path = "C:\\\\Users\\\\Nombre";',
+            'const texto = "Esto es un \\"ejemplo\\" con comillas";'
+        ];
+        
+        codigoTextarea.value = ejemplos[Math.floor(Math.random() * ejemplos.length)];
     });
-    
-    document.getElementById('generar').addEventListener('click', function() {
-        generarEjemplo();
-    });
+
+    function analizarLexico(codigo) {
+        let tokens = [];
+        let posicion = 0;
+        let linea = 1;
+        let columna = 1;
+
+        while (posicion < codigo.length) {
+            let encontrado = false;
+            let restoCodigo = codigo.slice(posicion);
+
+            let espacioBlanco = restoCodigo.match(/^[ \t]+/);
+            if (espacioBlanco) {
+                posicion += espacioBlanco[0].length;
+                columna += espacioBlanco[0].length;
+                continue;
+            }
+
+            let nuevaLinea = restoCodigo.match(/^[\r\n]+/);
+            if (nuevaLinea) {
+                posicion += nuevaLinea[0].length;
+                linea++;
+                columna = 1;
+                continue;
+            }
+
+            let comentarioLinea = restoCodigo.match(/^\/\/.*/);
+            if (comentarioLinea) {
+                tokens.push({
+                    codigo: comentarioLinea[0],
+                    token: "COMENTARIO_LINEA",
+                    linea: linea
+                });
+                posicion += comentarioLinea[0].length;
+                columna += comentarioLinea[0].length;
+                continue;
+            }
+
+            let comentarioBloque = restoCodigo.match(/^\/\*[\s\S]*?\*\//);
+            if (comentarioBloque) {
+                const lineasEnComentario = comentarioBloque[0].split('\n').length - 1;
+                tokens.push({
+                    codigo: comentarioBloque[0],
+                    token: "COMENTARIO_BLOQUE",
+                    linea: linea
+                });
+                posicion += comentarioBloque[0].length;
+                if (lineasEnComentario > 0) {
+                    linea += lineasEnComentario;
+                    columna = comentarioBloque[0].length - comentarioBloque[0].lastIndexOf('\n') - 1;
+                } else {
+                    columna += comentarioBloque[0].length;
+                }
+                continue;
+            }
+
+            for (const [palabra, token] of Object.entries(lexicoJS.palabrasReservadas)) {
+                if (restoCodigo.startsWith(palabra)) {
+                    const siguienteChar = restoCodigo[palabra.length];
+                    if (!siguienteChar || !/[a-zA-Z0-9_]/.test(siguienteChar)) {
+                        tokens.push({
+                            codigo: palabra,
+                            token: token,
+                            linea: linea
+                        });
+                        posicion += palabra.length;
+                        columna += palabra.length;
+                        encontrado = true;
+                        break;
+                    }
+                }
+            }
+            if (encontrado) continue;
+
+            for (const [operador, token] of Object.entries(lexicoJS.operadores)) {
+                if (restoCodigo.startsWith(operador)) {
+                    tokens.push({
+                        codigo: operador,
+                        token: token,
+                        linea: linea
+                    });
+                    posicion += operador.length;
+                    columna += operador.length;
+                    encontrado = true;
+                    break;
+                }
+            }
+            if (encontrado) continue;
+
+            for (const [delimitador, token] of Object.entries(lexicoJS.delimitadores)) {
+                if (restoCodigo.startsWith(delimitador)) {
+                    tokens.push({
+                        codigo: delimitador,
+                        token: token,
+                        linea: linea
+                    });
+                    posicion += delimitador.length;
+                    columna += delimitador.length;
+                    encontrado = true;
+                    break;
+                }
+            }
+            if (encontrado) continue;
+
+            let numero = restoCodigo.match(/^-?\d+(\.\d+)?([eE][+-]?\d+)?/);
+            if (numero) {
+                tokens.push({
+                    codigo: numero[0],
+                    token: "NUMERO",
+                    linea: linea
+                });
+                posicion += numero[0].length;
+                columna += numero[0].length;
+                continue;
+            }
+
+            if (restoCodigo[0] === '"' || restoCodigo[0] === "'" || restoCodigo[0] === "`") {
+                const comilla = restoCodigo[0];
+                let i = 1;
+                let cerrada = false;
+                
+                tokens.push({
+                    codigo: comilla,
+                    token: comilla === '"' ? "COMILLA_DOBLE" : 
+                           comilla === "'" ? "COMILLA_SIMPLE" : "BACKTICK",
+                    linea: linea
+                });
+                posicion++;
+                columna++;
+                restoCodigo = codigo.slice(posicion);
+                
+                while (i < restoCodigo.length && !cerrada) {
+                    if (restoCodigo[i] === comilla && restoCodigo[i-1] !== '\\') {
+                        cerrada = true;
+                    }
+                    i++;
+                }
+                
+                if (cerrada) {
+                    const contenido = restoCodigo.substring(0, i-1);
+                    if (contenido) {
+                        tokens.push({
+                            codigo: contenido,
+                            token: "CONTENIDO_CADENA",
+                            linea: linea
+                        });
+                        posicion += i-1;
+                        columna += i-1;
+                    }
+                    
+                    tokens.push({
+                        codigo: comilla,
+                        token: comilla === '"' ? "COMILLA_DOBLE" : 
+                               comilla === "'" ? "COMILLA_SIMPLE" : "BACKTICK",
+                        linea: linea
+                    });
+                    posicion++;
+                    columna++;
+                }
+                continue;
+            }
+
+            let identificador = restoCodigo.match(/^[a-zA-Z_$][a-zA-Z0-9_$]*/);
+            if (identificador) {
+                tokens.push({
+                    codigo: identificador[0],
+                    token: "IDENTIFICADOR",
+                    linea: linea
+                });
+                posicion += identificador[0].length;
+                columna += identificador[0].length;
+                continue;
+            }
+
+            tokens.push({
+                codigo: restoCodigo[0],
+                token: "TOKEN_DESCONOCIDO",
+                linea: linea
+            });
+            posicion++;
+            columna++;
+        }
+
+        return tokens;
+    }
+
+    function mostrarTokens(tokens) {
+        if (tokens.length === 0) {
+            resultLexicoDiv.innerHTML = '<p>No se encontraron tokens</p>';
+            return;
+        }
+
+        let tablaHTML = '<table class="token-table"><thead><tr><th>Código</th><th>Token</th><th>Línea</th></tr></thead><tbody>';
+
+        tokens.forEach(token => {
+            const esError = token.token === "TOKEN_DESCONOCIDO" || token.token === "CONTENIDO_CADENA_NO_CERRADA";
+            const claseFila = esError ? 'class="error"' : '';
+            
+            let codigoMostrado = escapeHTML(token.codigo)
+                .replace(/ /g, '&nbsp;')
+                .replace(/\n/g, '\\n')
+                .replace(/\t/g, '\\t')
+                .replace(/\r/g, '\\r');
+            
+            tablaHTML += `<tr ${claseFila}>
+                <td>${codigoMostrado}</td>
+                <td>${token.token}</td>
+                <td>${token.linea}</td>
+            </tr>`;
+        });
+
+        tablaHTML += '</tbody></table>';
+        
+        resultLexicoDiv.innerHTML = `
+            <div class="scroll">
+                <center>
+                    ${tablaHTML}
+                </center>
+            </div>
+            <br>
+            <p>Total de tokens encontrados: ${tokens.length}</p>
+            <p>Errores encontrados: ${tokens.filter(t => t.token === "TOKEN_DESCONOCIDO" || t.token === "CONTENIDO_CADENA_NO_CERRADA").length}</p>
+            ${tokens.some(t => t.token === "TOKEN_DESCONOCIDO" || t.token === "CONTENIDO_CADENA_NO_CERRADA") 
+                ? '<p style="color: red;">Se encontraron tokens con errores</p>' 
+                : '<p style="color: green;">Análisis léxico completado sin errores</p>'}
+        `;
+        
+        tablaTokenDiv.innerHTML = '';
+    }
+
+    function analizarSintactico(tokens) {
+        //codigo
+    }
+
+    function analizarSemantico(tokens) {
+        //codigo 
+    }
+
+    function escapeHTML(str) {
+        return str.replace(/&/g, "&amp;")
+                 .replace(/</g, "&lt;")
+                 .replace(/>/g, "&gt;")
+                 .replace(/"/g, "&quot;")
+                 .replace(/'/g, "&#039;");
+    }
 });
