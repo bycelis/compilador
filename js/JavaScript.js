@@ -515,6 +515,41 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function analizarSemantico(tokens) {
+        let errores = [];
+        let parentesisAbiertos = 0;
+        let llavesAbiertas = 0;
+        let corchetesAbiertos = 0;
+        
+        tokens.forEach(token => {
+            if (token.token === "PARENTESIS_ABRE") parentesisAbiertos++;
+            if (token.token === "PARENTESIS_CIERRA") parentesisAbiertos--;
+            if (token.token === "LLAVE_ABRE") llavesAbiertas++;
+            if (token.token === "LLAVE_CIERRA") llavesAbiertas--;
+            if (token.token === "CORCHETE_ABRE") corchetesAbiertos++;
+            if (token.token === "CORCHETE_CIERRA") corchetesAbiertos--;
+        });
+        
+        if (parentesisAbiertos > 0) errores.push("Hay paréntesis sin cerrar");
+        if (parentesisAbiertos < 0) errores.push("Hay paréntesis de cierre sin abrir");
+        if (llavesAbiertas > 0) errores.push("Hay llaves sin cerrar");
+        if (llavesAbiertas < 0) errores.push("Hay llaves de cierre sin abrir");
+        if (corchetesAbiertos > 0) errores.push("Hay corchetes sin cerrar");
+        if (corchetesAbiertos < 0) errores.push("Hay corchetes de cierre sin abrir");
+        
+        if (errores.length > 0) {
+            resultSintacticoDiv.innerHTML = `
+                <p style="color: red;">Errores sintácticos encontrados:</p>
+                <ul>${errores.map(e => `<li>${e}</li>`).join('')}</ul>
+            `;
+        } else {
+            resultSintacticoDiv.innerHTML = `
+                <p style="color: green;">Análisis sintáctico completado sin errores</p>
+                <p>Estructura básica del código válida</p>
+            `;
+        }
+    }
+
+    function analizarSemantico(tokens) {
         let variablesDeclaradas = new Map();
         let variablesUsadas = new Set();
         let operadoresUtilizados = new Set();
@@ -527,10 +562,8 @@ document.addEventListener('DOMContentLoaded', function() {
             // Manejo de strings
             if (['COMILLAS_DOBLES', 'COMILLAS_SENCILLAS', 'BACKTICK'].includes(token.token)) {
                 if (stringAbierto === null) {
-                    // Comienza un string
                     stringAbierto = token.token;
                 } else if (stringAbierto === token.token) {
-                    // Cierra el string
                     stringAbierto = null;
                 }
                 continue;
@@ -571,54 +604,44 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     
-        // Función mejorada para determinar tipos
         function determinarTipoDato(tokens, indexDeclaracion) {
             for (let i = indexDeclaracion; i < tokens.length; i++) {
                 if (tokens[i].token === "ASIGNACION" && i + 1 < tokens.length) {
                     const nextToken = tokens[i + 1];
                     
-                    // Strings con comillas dobles
                     if (nextToken.token === "COMILLAS_DOBLES" || nextToken.token === "COMILLAS_SENCILLAS") {
                         return "string";
                     }
                     
-                    // Template strings
                     if (nextToken.token === "CONTENIDO_CADENA") {
-                        return "cadena texto";
+                        return "string";
                     }
                     
-                    // Strings con escape
                     if (nextToken.codigo.includes("\\")) {
                         return "string";
                     }
                     
-                    // Números
                     if (nextToken.token === "NUMERO") {
                         return "number";
                     }
                     
-                    // Booleanos
                     if (nextToken.token === "VALOR_BOOLEANO_VERDADERO" || 
                         nextToken.token === "VALOR_BOOLEANO_FALSO") {
                         return "boolean";
                     }
                     
-                    // Null
                     if (nextToken.token === "VALOR_NULO") {
                         return "null";
                     }
                     
-                    // Regex
                     if (nextToken.token === "EXPRESION_REGULAR") {
                         return "regex";
                     }
                     
-                    // Arrays
                     if (nextToken.token === "CORCHETE_ABRE") {
                         return "array";
                     }
                     
-                    // Objetos
                     if (nextToken.token === "LLAVE_ABRE") {
                         return "object";
                     }
@@ -629,23 +652,70 @@ document.addEventListener('DOMContentLoaded', function() {
             return "unknown";
         }
     
-        // Generar resultados
-        const listaVariables = Array.from(variablesDeclaradas.entries())
-            .map(([nombre, info]) => `${nombre} (${info.tipoDeclaracion}, ${info.tipoDato})`)
-            .join('\n- ');
+        // Generar tabla de variables
+        let tablaVariables = `
+            <table class="result-table">
+                <thead>
+                    <tr>
+                        <th>Declaracion</th>
+                        <th>Nombre Varible</th>
+                        <th>Tipo Dato</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
     
-        const listaOperadores = Array.from(operadoresUtilizados).join(', ');
+        variablesDeclaradas.forEach((info, nombre) => {
+            tablaVariables += `
+                <tr>
+                    <td>${info.tipoDeclaracion}</td>
+                    <td>${nombre}</td>
+                    <td>${info.tipoDato}</td>
+                </tr>
+            `;
+        });
     
+        tablaVariables += `
+                </tbody>
+            </table>
+        `;
+    
+        // Generar tabla de errores
+        let tablaErrores = '';
+        if (errores.length > 0) {
+            tablaErrores = `
+                <table class="error-table">
+                    <thead>
+                        <tr>
+                            <th>Errores Semánticos</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${errores.map(e => `<tr><td>${e}</td></tr>`).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+    
+        // Mostrar resultados
         if (errores.length > 0) {
             resultSemanticoDiv.innerHTML = `
-                <p style="color: red;">Errores semánticos encontrados:</p>
-                <ul>${errores.map(e => `<li>${e}</li>`).join('')}</ul>
-                ${variablesDeclaradas.size > 0 ? 
-                   `<p>Variables declaradas:<br>${listaVariables}</p>` : ''}`;
+                <div class="result-container">
+                    ${tablaErrores}
+                    ${variablesDeclaradas.size > 0 ? `
+                        <h4>Variables Declaradas</h4>
+                        ${tablaVariables}
+                    ` : ''}
+                </div>
+            `;
         } else {
             resultSemanticoDiv.innerHTML = `
-                <p style="color: green;">Análisis semántico completado sin errores</p>
-                <p>Variables declaradas:<br>${listaVariables || 'Ninguna'}</p>
+                <div class="result-container">
+                    ${variablesDeclaradas.size > 0 ? `
+                        <h4>Variables Declaradas</h4>
+                        ${tablaVariables}
+                    ` : '<p>No se declararon variables</p>'}
+                </div>
             `;
         }
     }
