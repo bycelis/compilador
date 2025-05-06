@@ -244,7 +244,7 @@ function escapeHtml(unsafe) {
 document.getElementById('tabla-token').innerHTML = tabla(lexicoJS);
 
 document.addEventListener('DOMContentLoaded', function() {
-    const codigoTextarea = document.getElementById('codigo');
+    const codigoTextarea = document.getElementById('codigo-t');
     const compilarBtn = document.getElementById('compilar');
     const limpiarBtn = document.getElementById('limpiar');
     const generarBtn = document.getElementById('generar');
@@ -254,6 +254,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const resultSemanticoDiv = document.getElementById('result-semantico');
 
     function limpiarResultados() {
+        codigoTextarea.value = '';
         tablaTokenDiv.innerHTML = '';
         resultLexicoDiv.innerHTML = '';
         resultSintacticoDiv.innerHTML = '';
