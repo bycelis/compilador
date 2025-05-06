@@ -502,18 +502,9 @@ document.addEventListener('DOMContentLoaded', function() {
         tablaHTML += '</tbody></table>';
         
         resultLexicoDiv.innerHTML = `
-            <div class="scroll">
                 <center>
                     ${tablaHTML}
-                </center>
-            </div>
-            <br>
-            <p>Total de tokens encontrados: ${tokens.length}</p>
-            <p>Errores encontrados: ${tokens.filter(t => t.token === "TOKEN_DESCONOCIDO" || t.token === "CONTENIDO_CADENA_NO_CERRADA").length}</p>
-            ${tokens.some(t => t.token === "TOKEN_DESCONOCIDO" || t.token === "CONTENIDO_CADENA_NO_CERRADA") 
-                ? '<p style="color: red;">Se encontraron tokens con errores</p>' 
-                : '<p style="color: green;">Análisis léxico completado sin errores</p>'}
-        `;
+                </center>`;
         
         tablaTokenDiv.innerHTML = '';
     }
@@ -523,7 +514,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function analizarSemantico(tokens) {
-        //codigo 
+        //codigo
     }
 
     function escapeHTML(str) {
