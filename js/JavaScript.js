@@ -515,7 +515,139 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function analizarSemantico(tokens) {
-        //codigo
+        let variablesDeclaradas = new Map();
+        let variablesUsadas = new Set();
+        let operadoresUtilizados = new Set();
+        let errores = [];
+        let stringAbierto = null;
+    
+        for (let i = 0; i < tokens.length; i++) {
+            const token = tokens[i];
+    
+            // Manejo de strings
+            if (['COMILLAS_DOBLES', 'COMILLAS_SENCILLAS', 'BACKTICK'].includes(token.token)) {
+                if (stringAbierto === null) {
+                    // Comienza un string
+                    stringAbierto = token.token;
+                } else if (stringAbierto === token.token) {
+                    // Cierra el string
+                    stringAbierto = null;
+                }
+                continue;
+            }
+    
+            // Detectar declaraciones de variables
+            if (token.token === "DECLARACION_VAR" || token.token === "DECLARACION_LET" || token.token === "DECLARACION_CONST") {
+                const tipoDeclaracion = token.token.split('_')[1].toLowerCase();
+                if (i + 1 < tokens.length && tokens[i+1].token === "IDENTIFICADOR") {
+                    const nombreVar = tokens[i+1].codigo;
+                    const tipoDato = determinarTipoDato(tokens, i);
+                    
+                    variablesDeclaradas.set(nombreVar, {
+                        tipoDeclaracion: tipoDeclaracion,
+                        tipoDato: tipoDato
+                    });
+                }
+            }
+    
+            // Detectar uso de variables
+            if (token.token === "IDENTIFICADOR") {
+                if (!lexicoJS.palabrasReservadas[token.codigo] && isNaN(token.codigo)) {
+                    variablesUsadas.add(token.codigo);
+                }
+            }
+    
+            // Detectar operadores
+            if (token.token.startsWith("OPERADOR_") || 
+                ["ASIGNACION", "IGUALDAD", "IGUALDAD_ESTRICTA"].includes(token.token)) {
+                operadoresUtilizados.add(token.token.replace("OPERADOR_", ""));
+            }
+        }
+    
+        // Verificar variables no declaradas
+        variablesUsadas.forEach(variable => {
+            if (!variablesDeclaradas.has(variable)) {
+                errores.push(`Variable no declarada: ${variable}`);
+            }
+        });
+    
+        // Función mejorada para determinar tipos
+        function determinarTipoDato(tokens, indexDeclaracion) {
+            for (let i = indexDeclaracion; i < tokens.length; i++) {
+                if (tokens[i].token === "ASIGNACION" && i + 1 < tokens.length) {
+                    const nextToken = tokens[i + 1];
+                    
+                    // Strings con comillas dobles
+                    if (nextToken.token === "COMILLAS_DOBLES" || nextToken.token === "COMILLAS_SENCILLAS") {
+                        return "string";
+                    }
+                    
+                    // Template strings
+                    if (nextToken.token === "CONTENIDO_CADENA") {
+                        return "cadena texto";
+                    }
+                    
+                    // Strings con escape
+                    if (nextToken.codigo.includes("\\")) {
+                        return "string";
+                    }
+                    
+                    // Números
+                    if (nextToken.token === "NUMERO") {
+                        return "number";
+                    }
+                    
+                    // Booleanos
+                    if (nextToken.token === "VALOR_BOOLEANO_VERDADERO" || 
+                        nextToken.token === "VALOR_BOOLEANO_FALSO") {
+                        return "boolean";
+                    }
+                    
+                    // Null
+                    if (nextToken.token === "VALOR_NULO") {
+                        return "null";
+                    }
+                    
+                    // Regex
+                    if (nextToken.token === "EXPRESION_REGULAR") {
+                        return "regex";
+                    }
+                    
+                    // Arrays
+                    if (nextToken.token === "CORCHETE_ABRE") {
+                        return "array";
+                    }
+                    
+                    // Objetos
+                    if (nextToken.token === "LLAVE_ABRE") {
+                        return "object";
+                    }
+                    
+                    break;
+                }
+            }
+            return "unknown";
+        }
+    
+        // Generar resultados
+        const listaVariables = Array.from(variablesDeclaradas.entries())
+            .map(([nombre, info]) => `${nombre} (${info.tipoDeclaracion}, ${info.tipoDato})`)
+            .join('\n- ');
+    
+        const listaOperadores = Array.from(operadoresUtilizados).join(', ');
+    
+        if (errores.length > 0) {
+            resultSemanticoDiv.innerHTML = `
+                <p style="color: red;">Errores semánticos encontrados:</p>
+                <ul>${errores.map(e => `<li>${e}</li>`).join('')}</ul>
+                ${variablesDeclaradas.size > 0 ? 
+                   `<p>Variables declaradas:<br>${listaVariables}</p>` : ''}`;
+        } else {
+            resultSemanticoDiv.innerHTML = `
+                <p style="color: green;">Análisis semántico completado sin errores</p>
+                <p>Variables declaradas:<br>${listaVariables || 'Ninguna'}</p>
+            `;
+        }
     }
 
     function escapeHTML(str) {
