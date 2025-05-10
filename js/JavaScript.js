@@ -511,213 +511,175 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function analizarSintactico(tokens) {
-        //codigo
-    }
+    let resultado = '<ul>';
+    let errores = 0;
+    let warnings = 0;
+    
+    const pilas = {
+        parentesis: [],
+        llaves: [],
+        corchetes: [],
+        comillas: []
+    };
 
-    function analizarSemantico(tokens) {
-        let errores = [];
-        let parentesisAbiertos = 0;
-        let llavesAbiertas = 0;
-        let corchetesAbiertos = 0;
-        
-        tokens.forEach(token => {
-            if (token.token === "PARENTESIS_ABRE") parentesisAbiertos++;
-            if (token.token === "PARENTESIS_CIERRA") parentesisAbiertos--;
-            if (token.token === "LLAVE_ABRE") llavesAbiertas++;
-            if (token.token === "LLAVE_CIERRA") llavesAbiertas--;
-            if (token.token === "CORCHETE_ABRE") corchetesAbiertos++;
-            if (token.token === "CORCHETE_CIERRA") corchetesAbiertos--;
-        });
-        
-        if (parentesisAbiertos > 0) errores.push("Hay paréntesis sin cerrar");
-        if (parentesisAbiertos < 0) errores.push("Hay paréntesis de cierre sin abrir");
-        if (llavesAbiertas > 0) errores.push("Hay llaves sin cerrar");
-        if (llavesAbiertas < 0) errores.push("Hay llaves de cierre sin abrir");
-        if (corchetesAbiertos > 0) errores.push("Hay corchetes sin cerrar");
-        if (corchetesAbiertos < 0) errores.push("Hay corchetes de cierre sin abrir");
-        
-        if (errores.length > 0) {
-            resultSintacticoDiv.innerHTML = `
-                <p style="color: red;">Errores sintácticos encontrados:</p>
-                <ul>${errores.map(e => `<li>${e}</li>`).join('')}</ul>
-            `;
-        } else {
-            resultSintacticoDiv.innerHTML = `
-                <p style="color: green;">Análisis sintáctico completado sin errores</p>
-                <p>Estructura básica del código válida</p>
-            `;
-        }
-    }
+    let estado = {
+        enFuncion: false,
+        enBloque: 0,
+        necesitaPuntoComa: false,
+        ultimoToken: null,
+        enParametros: false,
+        enEstructuraControl: false,
+        enDeclaracion: false,
+        enExpresion: false,
+        enComentario: false,
+        enAsignacion: false,
+        enReturn: false,
+        enLineaActual: 1,
+        posicionASI: null,
+        variablesDeclaradas: new Set(),
+        funcionesDeclaradas: new Set(),
+        enDeclaracionVariable: false,
+        lineaDeclaracion: 0,
+        identificadorDeclarado: '',
+        enCadena: false,
+        tipoComillaActual: null,
+        lineaInicioCadena: 0,
+        ultimoTokenImportante: null
+    };
 
-    function analizarSemantico(tokens) {
-        let variablesDeclaradas = new Map();
-        let variablesUsadas = new Set();
-        let operadoresUtilizados = new Set();
-        let errores = [];
-        let stringAbierto = null;
-    
-        for (let i = 0; i < tokens.length; i++) {
-            const token = tokens[i];
-    
-            // Manejo de strings
-            if (['COMILLAS_DOBLES', 'COMILLAS_SENCILLAS', 'BACKTICK'].includes(token.token)) {
-                if (stringAbierto === null) {
-                    stringAbierto = token.token;
-                } else if (stringAbierto === token.token) {
-                    stringAbierto = null;
-                }
-                continue;
-            }
-    
-            // Detectar declaraciones de variables
-            if (token.token === "DECLARACION_VAR" || token.token === "DECLARACION_LET" || token.token === "DECLARACION_CONST") {
-                const tipoDeclaracion = token.token.split('_')[1].toLowerCase();
-                if (i + 1 < tokens.length && tokens[i+1].token === "IDENTIFICADOR") {
-                    const nombreVar = tokens[i+1].codigo;
-                    const tipoDato = determinarTipoDato(tokens, i);
-                    
-                    variablesDeclaradas.set(nombreVar, {
-                        tipoDeclaracion: tipoDeclaracion,
-                        tipoDato: tipoDato
-                    });
-                }
-            }
-    
-            // Detectar uso de variables
-            if (token.token === "IDENTIFICADOR") {
-                if (!lexicoJS.palabrasReservadas[token.codigo] && isNaN(token.codigo)) {
-                    variablesUsadas.add(token.codigo);
-                }
-            }
-    
-            // Detectar operadores
-            if (token.token.startsWith("OPERADOR_") || 
-                ["ASIGNACION", "IGUALDAD", "IGUALDAD_ESTRICTA"].includes(token.token)) {
-                operadoresUtilizados.add(token.token.replace("OPERADOR_", ""));
+    for (let i = 0; i < tokens.length; i++) {
+        const token = tokens[i];
+        const nextToken = i + 1 < tokens.length ? tokens[i + 1] : null;
+        const prevToken = i > 0 ? tokens[i - 1] : null;
+
+        // 1. Detección de cadenas no cerradas (nueva funcionalidad)
+        if (["COMILLA_DOBLE", "COMILLA_SIMPLE", "BACKTICK"].includes(token.token)) {
+            if (estado.enCadena && token.token === estado.tipoComillaActual) {
+                estado.enCadena = false;
+                pilas.comillas.pop();
+            } else if (!estado.enCadena) {
+                estado.enCadena = true;
+                estado.tipoComillaActual = token.token;
+                estado.lineaInicioCadena = token.linea;
+                pilas.comillas.push({
+                    tipo: token.token,
+                    linea: token.linea
+                });
             }
         }
-    
-        // Verificar variables no declaradas
-        variablesUsadas.forEach(variable => {
-            if (!variablesDeclaradas.has(variable)) {
-                errores.push(`Variable no declarada: ${variable}`);
+
+        // 2. Verificación de cambio de línea (original mejorado)
+        if (token.linea !== estado.enLineaActual) {
+            estado.enLineaActual = token.linea;
+            
+            // Detección de punto y coma faltante en declaraciones
+            if (estado.enDeclaracionVariable) {
+                resultado += `<li class="error">Falta PUNTO_Y_COMA después de declaración de '${estado.identificadorDeclarado}' (línea ${estado.lineaDeclaracion})</li>`;
+                errores++;
+                estado.enDeclaracionVariable = false;
             }
-        });
-    
-        function determinarTipoDato(tokens, indexDeclaracion) {
-            for (let i = indexDeclaracion; i < tokens.length; i++) {
-                if (tokens[i].token === "ASIGNACION" && i + 1 < tokens.length) {
-                    const nextToken = tokens[i + 1];
-                    
-                    if (nextToken.token === "COMILLAS_DOBLES" || nextToken.token === "COMILLAS_SENCILLAS") {
-                        return "string";
-                    }
-                    
-                    if (nextToken.token === "CONTENIDO_CADENA") {
-                        return "string";
-                    }
-                    
-                    if (nextToken.codigo.includes("\\")) {
-                        return "string";
-                    }
-                    
-                    if (nextToken.token === "NUMERO") {
-                        return "number";
-                    }
-                    
-                    if (nextToken.token === "VALOR_BOOLEANO_VERDADERO" || 
-                        nextToken.token === "VALOR_BOOLEANO_FALSO") {
-                        return "boolean";
-                    }
-                    
-                    if (nextToken.token === "VALOR_NULO") {
-                        return "null";
-                    }
-                    
-                    if (nextToken.token === "EXPRESION_REGULAR") {
-                        return "regex";
-                    }
-                    
-                    if (nextToken.token === "CORCHETE_ABRE") {
-                        return "array";
-                    }
-                    
-                    if (nextToken.token === "LLAVE_ABRE") {
-                        return "object";
-                    }
-                    
+            
+            // Verificación general de ASI
+            if (estado.posicionASI !== null && estado.posicionASI < estado.enLineaActual) {
+                resultado += `<li class="error">Falta PUNTO_Y_COMA al final de la línea ${estado.posicionASI}</li>`;
+                errores++;
+                estado.posicionASI = null;
+            }
+        }
+
+        // 3. Detección de declaraciones de variables (original mejorado)
+        if (['DECLARACION_LET', 'DECLARACION_CONST', 'DECLARACION_VAR'].includes(token.token)) {
+            estado.enDeclaracionVariable = true;
+            estado.lineaDeclaracion = token.linea;
+            
+            // Buscar el identificador en la declaración
+            for (let j = i + 1; j < tokens.length; j++) {
+                if (tokens[j].token === "IDENTIFICADOR") {
+                    estado.identificadorDeclarado = tokens[j].codigo;
                     break;
                 }
             }
-            return "unknown";
         }
-    
-        // Generar tabla de variables
-        let tablaVariables = `
-            <table class="result-table">
-                <thead>
-                    <tr>
-                        <th>Declaracion</th>
-                        <th>Nombre Varible</th>
-                        <th>Tipo Dato</th>
-                    </tr>
-                </thead>
-                <tbody>
-        `;
-    
-        variablesDeclaradas.forEach((info, nombre) => {
-            tablaVariables += `
-                <tr>
-                    <td>${info.tipoDeclaracion}</td>
-                    <td>${nombre}</td>
-                    <td>${info.tipoDato}</td>
-                </tr>
-            `;
-        });
-    
-        tablaVariables += `
-                </tbody>
-            </table>
-        `;
-    
-        // Generar tabla de errores
-        let tablaErrores = '';
-        if (errores.length > 0) {
-            tablaErrores = `
-                <table class="error-table">
-                    <thead>
-                        <tr>
-                            <th>Errores Semánticos</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${errores.map(e => `<tr><td>${e}</td></tr>`).join('')}
-                    </tbody>
-                </table>
-            `;
+
+        // 4. Verificación de punto y coma después de declaración (nueva lógica)
+        if (estado.enDeclaracionVariable && token.token === "PUNTO_Y_COMA") {
+            estado.enDeclaracionVariable = false;
         }
-    
-        // Mostrar resultados
-        if (errores.length > 0) {
-            resultSemanticoDiv.innerHTML = `
-                <div class="result-container">
-                    ${tablaErrores}
-                    ${variablesDeclaradas.size > 0 ? `
-                        <h4>Variables Declaradas</h4>
-                        ${tablaVariables}
-                    ` : ''}
-                </div>
-            `;
-        } else {
-            resultSemanticoDiv.innerHTML = `
-                <div class="result-container">
-                    ${variablesDeclaradas.size > 0 ? `
-                        <h4>Variables Declaradas</h4>
-                        ${tablaVariables}
-                    ` : '<p>No se declararon variables</p>'}
-                </div>
-            `;
+
+        // 5. Resto del análisis original (estructuras, funciones, etc.)
+        if (token.token === "PARENTESIS_ABRE") {
+            pilas.parentesis.push({ token: token, linea: token.linea });
+        } else if (token.token === "PARENTESIS_CIERRA") {
+            if (pilas.parentesis.length === 0) {
+                resultado += `<li class="error">Paréntesis de cierre sin apertura en línea ${token.linea}</li>`;
+                errores++;
+            } else {
+                pilas.parentesis.pop();
+            }
         }
+
+        if (token.token === "LLAVE_ABRE") {
+            pilas.llaves.push({ token: token, linea: token.linea });
+            estado.enBloque++;
+        } else if (token.token === "LLAVE_CIERRA") {
+            if (pilas.llaves.length === 0) {
+                resultado += `<li class="error">Llave de cierre sin apertura en línea ${token.linea}</li>`;
+                errores++;
+            } else {
+                pilas.llaves.pop();
+                estado.enBloque--;
+            }
+        }
+
+        if (token.token === "CORCHETE_ABRE") {
+            pilas.corchetes.push({ token: token, linea: token.linea });
+        } else if (token.token === "CORCHETE_CIERRA") {
+            if (pilas.corchetes.length === 0) {
+                resultado += `<li class="error">Corchete de cierre sin apertura en línea ${token.linea}</li>`;
+                errores++;
+            } else {
+                pilas.corchetes.pop();
+            }
+        }
+
+    }
+
+    // Verificaciones finales
+    if (estado.enCadena) {
+        const tipoComilla = estado.tipoComillaActual === "COMILLA_DOBLE" ? '"' : 
+                          estado.tipoComillaActual === "COMILLA_SIMPLE" ? "'" : "`";
+        resultado += `<li class="error">Cadena con ${tipoComilla} no cerrada (línea ${estado.lineaInicioCadena})</li>`;
+        errores++;
+    }
+
+    if (estado.enDeclaracionVariable) {
+        resultado += `<li class="error">Falta PUNTO_Y_COMA después de declaración de '${estado.identificadorDeclarado}'</li>`;
+        errores++;
+    }
+
+    if (pilas.parentesis.length > 0) {
+        resultado += `<li class="error">Paréntesis no cerrado en línea ${pilas.parentesis[pilas.parentesis.length - 1].linea}</li>`;
+        errores++;
+    }
+
+    if (pilas.llaves.length > 0) {
+        resultado += `<li class="error">Llave no cerrada en línea ${pilas.llaves[pilas.llaves.length - 1].linea}</li>`;
+        errores++;
+    }
+
+    if (pilas.corchetes.length > 0) {
+        resultado += `<li class="error">Corchete no cerrado en línea ${pilas.corchetes[pilas.corchetes.length - 1].linea}</li>`;
+        errores++;
+    }
+
+    resultado += `<li class="summary">Resumen: ${errores} errores</li>`;
+    resultado += '</ul>';
+    
+    resultSintacticoDiv.innerHTML = resultado;
+}
+
+    function analizarSemantico(tokens) {
+        //codigo
     }
 
     function escapeHTML(str) {
