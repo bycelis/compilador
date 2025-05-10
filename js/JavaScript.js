@@ -642,6 +642,31 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
+        if (token.token === "CONDICIONAL_IF") {
+    estado.enEstructuraControl = true;
+    
+    // Verificar que el if tenga () y {}
+    if (!nextToken || nextToken.token !== "PARENTESIS_ABRE") {
+        resultado += `<li class="error">Falta '(' después de 'if' (línea ${token.linea})</li>`;
+        errores++;
+    } else {
+        // Buscar el cierre de paréntesis
+        let j = i + 2;
+        let parentesisCerrado = false;
+        while (j < tokens.length && tokens[j].token !== "PARENTESIS_CIERRA") {
+            j++;
+        }
+        
+        if (j >= tokens.length) {
+            resultado += `<li class="error">Falta ')' para cerrar condición if (línea ${token.linea})</li>`;
+            errores++;
+        } else if (!tokens[j+1] || tokens[j+1].token !== "LLAVE_ABRE") {
+            resultado += `<li class="warning">Considera agregar '{}' después del if (línea ${token.linea})</li>`;
+            warnings++;
+        }
+    }
+}
+
     }
 
     // Verificaciones finales
