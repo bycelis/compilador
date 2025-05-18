@@ -83,7 +83,8 @@ const lexicoJS = {
         ":": "DOS_PUNTOS",
         ".": "PUNTO",
         "=>": "FLECHA_FUNCION",
-        "...": "OPERADOR_SPREAD"
+        "...": "OPERADOR_SPREAD",
+        "|": "pipe"
     },
 
     literales: {
@@ -515,6 +516,23 @@ document.addEventListener('DOMContentLoaded', function() {
     let errores = 0;
     let warnings = 0;
     
+    const palabrasReservadas = {
+        'let': 'DECLARACION_LET',
+        'const': 'DECLARACION_CONST',
+        'var': 'DECLARACION_VAR'
+    };
+
+    const erroresComunes = {
+        'lett': 'let',
+        'letr': 'let',
+        'llet': 'let',
+        'cons': 'const',
+        'cont': 'const',
+        'konst': 'const',
+        'varr': 'var',
+        'vaar': 'var'
+    };
+
     const pilas = {
         parentesis: [],
         llaves: [],
@@ -551,6 +569,17 @@ document.addEventListener('DOMContentLoaded', function() {
         const token = tokens[i];
         const nextToken = i + 1 < tokens.length ? tokens[i + 1] : null;
         const prevToken = i > 0 ? tokens[i - 1] : null;
+
+        // Detección de palabras reservadas mal escritas
+        if (!palabrasReservadas[token.codigo] && erroresComunes[token.codigo]) {
+            const correccion = erroresComunes[token.codigo];
+            resultado += `<li class="error">Palabra reservada mal escrita: '${token.codigo}'. ¿Quiso decir '${correccion}'? (línea ${token.linea})</li>`;
+            errores++;
+            
+            // Autocorrección para continuar el análisis
+            token.codigo = correccion;
+            token.token = palabrasReservadas[correccion];
+        }
 
         // 1. Detección de cadenas no cerradas (nueva funcionalidad)
         if (["COMILLA_DOBLE", "COMILLA_SIMPLE", "BACKTICK"].includes(token.token)) {
@@ -704,7 +733,229 @@ document.addEventListener('DOMContentLoaded', function() {
 }
 
     function analizarSemantico(tokens) {
-        //codigo
+        let resultadoHTML = '';
+        let tablaHTML = '<table class="token-table"><thead><tr><th>Elemento</th><th>Tipo/Resultado</th><th>Detalles</th></tr></thead><tbody>';
+        
+        const tablaSimbolos = {};
+        let errores = [];
+        let advertencias = [];
+        
+        // Primera pasada: identificar declaraciones de variables
+        for (let i = 0; i < tokens.length; i++) {
+            const token = tokens[i];
+            
+            // Detectar declaraciones de variables
+            if (token.token === 'DECLARACION_VAR' || token.token === 'DECLARACION_LET' || token.token === 'DECLARACION_CONST') {
+                if (i + 2 < tokens.length && tokens[i+1].token === 'IDENTIFICADOR') {
+                    const nombreVar = tokens[i+1].codigo;
+                    let tipoVar = 'undefined';
+                    
+                    if (i + 3 < tokens.length && tokens[i+2].token === 'ASIGNACION') {
+                        const valorToken = tokens[i+3];
+                        
+                        if (valorToken.token === 'NUMERO') {
+                            tipoVar = 'number';
+                        } else if (valorToken.token === 'CONTENIDO_CADENA' || 
+                                   (valorToken.token === 'COMILLA_DOBLE' || valorToken.token === 'COMILLA_SIMPLE' || valorToken.token === 'BACKTICK')) {
+                            tipoVar = 'string';
+                        } else if (valorToken.token === 'VALOR_BOOLEANO_VERDADERO' || valorToken.token === 'VALOR_BOOLEANO_FALSO') {
+                            tipoVar = 'boolean';
+                        } else if (valorToken.token === 'VALOR_NULO') {
+                            tipoVar = 'null';
+                        } else if (valorToken.token === 'IDENTIFICADOR' && tablaSimbolos[valorToken.codigo]) {
+                            tipoVar = tablaSimbolos[valorToken.codigo].tipo;
+                        }
+                        
+                        tablaSimbolos[nombreVar] = { tipo: tipoVar, linea: token.linea };
+                        i += 3;
+                    } else {
+                        tablaSimbolos[nombreVar] = { tipo: tipoVar, linea: token.linea };
+                        i += 1;
+                    }
+                }
+            }
+        }
+        
+        // Segunda pasada: analizar operaciones y estructuras
+        for (let i = 0; i < tokens.length; i++) {
+            const token = tokens[i];
+            
+            // Analizar condicionales (if)
+            if (token.token === 'CONDICIONAL_IF') {
+                // Buscar la condición entre paréntesis
+                let j = i + 1;
+                let condicionTokens = [];
+                let parentesisAbiertos = 0;
+                let encontroParentesis = false;
+                
+                // Buscar el opening parenthesis
+                while (j < tokens.length && !(tokens[j].token === 'PARENTESIS_ABRE' && parentesisAbiertos === 0)) {
+                    j++;
+                }
+                
+                if (j < tokens.length && tokens[j].token === 'PARENTESIS_ABRE') {
+                    parentesisAbiertos = 1;
+                    j++;
+                    encontroParentesis = true;
+                    
+                    // Recoger tokens hasta el closing parenthesis
+                    while (j < tokens.length && parentesisAbiertos > 0) {
+                        if (tokens[j].token === 'PARENTESIS_ABRE') parentesisAbiertos++;
+                        if (tokens[j].token === 'PARENTESIS_CIERRA') parentesisAbiertos--;
+                        if (parentesisAbiertos > 0) {
+                            condicionTokens.push(tokens[j]);
+                        }
+                        j++;
+                    }
+                }
+                
+                if (encontroParentesis && condicionTokens.length > 0) {
+                    // Analizar la condición
+                    const tipoCondicion = analizarExpresion(condicionTokens, tablaSimbolos);
+                    
+                    if (tipoCondicion !== 'boolean' && tipoCondicion !== 'desconocido') {
+                        errores.push(`Error en línea ${token.linea}: La condición del if debe ser booleana, se encontró tipo ${tipoCondicion}`);
+                    }
+                    
+                    tablaHTML += `<tr>
+                        <td>Condicional if</td>
+                        <td>${tipoCondicion}</td>
+                        <td>Condición: ${condicionTokens.map(t => t.codigo).join(' ')}</td>
+                    </tr>`;
+                    
+                    i = j - 1; // Saltar al final de la condición
+                }
+            }
+            
+            // Analizar operadores
+            if (token.token.startsWith('OPERADOR_') || 
+                ['SUMA', 'RESTA', 'MULTIPLICACION', 'DIVISION', 'MODULO', 'IGUALDAD', 
+                 'IGUALDAD_ESTRICTA', 'DESIGUALDAD', 'DESIGUALDAD_ESTRICTA'].includes(token.token)) {
+                
+                const operandoIzq = i > 0 ? tokens[i-1] : null;
+                const operandoDer = i < tokens.length - 1 ? tokens[i+1] : null;
+                
+                let tipoIzq = 'desconocido';
+                let tipoDer = 'desconocido';
+                let valorIzq = operandoIzq ? operandoIzq.codigo : '?';
+                let valorDer = operandoDer ? operandoDer.codigo : '?';
+                let resultadoTipo = 'desconocido';
+                let mensaje = '';
+                
+                // Determinar tipos de operandos
+                if (operandoIzq) {
+                    if (operandoIzq.token === 'NUMERO') {
+                        tipoIzq = 'number';
+                    } else if (operandoIzq.token === 'CONTENIDO_CADENA' || 
+                              operandoIzq.token === 'COMILLA_DOBLE' || 
+                              operandoIzq.token === 'COMILLA_SIMPLE' || 
+                              operandoIzq.token === 'BACKTICK') {
+                        tipoIzq = 'string';
+                    } else if (operandoIzq.token === 'VALOR_BOOLEANO_VERDADERO' || 
+                               operandoIzq.token === 'VALOR_BOOLEANO_FALSO') {
+                        tipoIzq = 'boolean';
+                    } else if (operandoIzq.token === 'IDENTIFICADOR' && tablaSimbolos[operandoIzq.codigo]) {
+                        tipoIzq = tablaSimbolos[operandoIzq.codigo].tipo;
+                        valorIzq = `${operandoIzq.codigo} (${tipoIzq})`;
+                    }
+                }
+                
+                if (operandoDer) {
+                    if (operandoDer.token === 'NUMERO') {
+                        tipoDer = 'number';
+                    } else if (operandoDer.token === 'CONTENIDO_CADENA' || 
+                                operandoDer.token === 'COMILLA_DOBLE' || 
+                                operandoDer.token === 'COMILLA_SIMPLE' || 
+                                operandoDer.token === 'BACKTICK') {
+                        tipoDer = 'string';
+                    } else if (operandoDer.token === 'VALOR_BOOLEANO_VERDADERO' || 
+                               operandoDer.token === 'VALOR_BOOLEANO_FALSO') {
+                        tipoDer = 'boolean';
+                    } else if (operandoDer.token === 'IDENTIFICADOR' && tablaSimbolos[operandoDer.codigo]) {
+                        tipoDer = tablaSimbolos[operandoDer.codigo].tipo;
+                        valorDer = `${operandoDer.codigo} (${tipoDer})`;
+                    }
+                }
+                
+                // Determinar tipo de resultado según la operación
+                if (['RESTA', 'MULTIPLICACION', 'DIVISION', 'MODULO', 'SUMA'].includes(token.token)) {
+                    if (tipoIzq === 'number' && tipoDer === 'number') {
+                        resultadoTipo = 'number';
+                        mensaje = `Operación ${token.token.toLowerCase()}`;
+                    } else {
+                        resultadoTipo = 'desconocido';
+                        mensaje = `Tipos incompatibles para ${token.token.toLowerCase()}`;
+                        errores.push(`Error semántico en línea ${token.linea}: Tipos incompatibles para ${token.token.toLowerCase()} (${tipoIzq} ${token.codigo} ${tipoDer})`);
+                    }
+                }
+                else if (['IGUALDAD', 'IGUALDAD_ESTRICTA', 'DESIGUALDAD', 'DESIGUALDAD_ESTRICTA'].includes(token.token)) {
+                    resultadoTipo = 'boolean';
+                    if (token.token === 'IGUALDAD_ESTRICTA' || token.token === 'DESIGUALDAD_ESTRICTA') {
+                        if (tipoIzq !== tipoDer) {
+                            mensaje = 'Comparación estricta entre tipos diferentes';
+                            advertencias.push(`Advertencia en línea ${token.linea}: Comparación estricta entre tipos diferentes (${tipoIzq} ${token.codigo} ${tipoDer})`);
+                        }
+                    }
+                }
+                
+                tablaHTML += `<tr>
+                    <td>Operación ${escapeHTML(token.codigo)}</td>
+                    <td>${resultadoTipo}</td>
+                    <td>${escapeHTML(valorIzq)} ${escapeHTML(token.codigo)} ${escapeHTML(valorDer)} → ${mensaje}</td>
+                </tr>`;
+            }
+        }
+        
+        tablaHTML += '</tbody></table>';
+        
+        // Mostrar tabla de símbolos
+        let simbolosHTML = '<h4>Tabla de Símbolos</h4><table class="token-table"><thead><tr><th>Variable</th><th>Tipo</th><th>Línea</th></tr></thead><tbody>';
+        
+        for (const [nombre, info] of Object.entries(tablaSimbolos)) {
+            simbolosHTML += `<tr>
+                <td>${escapeHTML(nombre)}</td>
+                <td>${info.tipo}</td>
+                <td>${info.linea}</td>
+            </tr>`;
+        }
+        
+        simbolosHTML += '</tbody></table>';
+        
+        // Mostrar errores y advertencias
+        if (errores.length > 0 || advertencias.length > 0) {
+            resultadoHTML += '<div class="errores"><h4>Errores y Advertencias</h4><ul>';
+            
+            for (const error of errores) {
+                resultadoHTML += `<li class="error">${error}</li>`;
+            }
+            
+            for (const advertencia of advertencias) {
+                resultadoHTML += `<li class="advertencia">${advertencia}</li>`;
+            }
+            
+            resultadoHTML += '</ul></div>';
+        }
+        
+        resultadoHTML += tablaHTML + simbolosHTML;
+        resultSemanticoDiv.innerHTML = resultadoHTML;
+    }
+    
+    // Función auxiliar para analizar expresiones
+    function analizarExpresion(tokens, tablaSimbolos) {
+        // Simplificación: buscamos el tipo del primer token significativo
+        for (const token of tokens) {
+            if (token.token === 'NUMERO') return 'number';
+            if (token.token === 'CONTENIDO_CADENA' || 
+                token.token === 'COMILLA_DOBLE' || 
+                token.token === 'COMILLA_SIMPLE' || 
+                token.token === 'BACKTICK') return 'string';
+            if (token.token === 'VALOR_BOOLEANO_VERDADERO' || 
+                token.token === 'VALOR_BOOLEANO_FALSO') return 'boolean';
+            if (token.token === 'IDENTIFICADOR' && tablaSimbolos[token.codigo]) {
+                return tablaSimbolos[token.codigo].tipo;
+            }
+        }
+        return 'desconocido';
     }
 
     function escapeHTML(str) {
